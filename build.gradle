@@ -1,0 +1,128 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2017 Barracks Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+buildscript {
+    dependencies {
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+    }
+    repositories {
+        maven {
+            url "http://repository.jboss.org/nexus/content/groups/public/"
+        }
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+}
+
+group = projectGroup
+
+def buildNumber = System.getenv("BUILD_NUMBER")
+
+apply plugin: 'java'
+apply plugin: 'jacoco'
+apply plugin: 'pmd'
+apply plugin: 'findbugs'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        name 'barracks'
+        url "https://dl.bintray.com/barracksiot/libs/"
+    }
+}
+
+dependencies {
+    compileOnly group: 'org.springframework', name: 'spring-web', version: '4.3.6.RELEASE'
+    compileOnly group: 'org.springframework.data', name: 'spring-data-commons', version: '1.13.0.RELEASE'
+    compileOnly group: 'org.springframework.hateoas', name: 'spring-hateoas', version: '0.23.0.RELEASE'
+    compileOnly 'io.barracks.libs:common-libs:2.0.0-1'
+}
+
+jar {
+    version = (System.getenv("BRANCH_NAME") ?: "LOCAL") + '-' + (buildNumber ?: "SNAPSHOT")
+}
+
+jacoco {
+    toolVersion = "0.7.6.201602180812"
+}
+
+test {
+    jacoco {
+        destinationFile = file("$buildDir/jacoco/jacoco.exec")
+    }
+}
+
+jacocoTestReport {
+    executionData = fileTree(dir: "$buildDir/jacoco", include: '**/*.exec')
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+check.dependsOn jacocoTestReport
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId projectGroup
+            artifactId rootProject.name
+            version jar.version
+        }
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    pkg {
+        repo = 'libs'
+        name = 'common-test-libs'
+        userOrg = 'barracksiot'
+        publications = ['mavenJava']
+        publish = true
+        version {
+            name = jar.version
+        }
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.12'
+}
+
+tasks.withType(FindBugs) {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
