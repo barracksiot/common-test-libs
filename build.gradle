@@ -113,7 +113,7 @@ bintray {
     key = System.getenv('BINTRAY_KEY')
     pkg {
         repo = 'libs'
-        name = 'common-libs'
+        name = 'common-test-libs'
         userOrg = 'barracksiot'
         publications = ['mavenJava']
         publish = true
